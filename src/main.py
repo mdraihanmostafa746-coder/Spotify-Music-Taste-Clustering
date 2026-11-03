@@ -147,7 +147,8 @@ def get_analytics():
 def search_tracks(
     q: str = Query(..., min_length=1),
     vibe: str | None = None,
-    limit: int = Query(20, ge=1, le=100)
+    limit: int = Query(20, ge=1, le=100),
+    skip: int = Query(0, ge=0)
 ):
     search_results = playlist_df[
         playlist_df["Track_Name"].str.contains(
@@ -165,9 +166,31 @@ def search_tracks(
         ]
 
     search_results = search_results.drop_duplicates(
-    subset=["Track_Name", "Artist"]
-)
+        subset=["Track_Name", "Artist"]
+    )
 
     return search_results[
-    ["Track_Name", "Artist", "Vibe_Cluster_Label"]
-    ].head(limit).to_dict(orient="records")
+        ["Track_Name", "Artist", "Vibe_Cluster_Label"]
+    ].iloc[skip:skip + limit].to_dict(orient="records")
+    
+
+@app.get("/tracks/details")
+def get_track_details(
+    track_name: str = Query(..., min_length=1),
+    artist: str = Query(..., min_length=1)
+):
+    track = playlist_df[
+        (playlist_df["Track_Name"].str.casefold() == track_name.casefold()) &
+        (playlist_df["Artist"].str.casefold() == artist.casefold())
+    ]
+
+    if track.empty:
+        return {"message": "Track not found"}
+
+    result = track.iloc[0]
+
+    return {
+        "track_name": result["Track_Name"],
+        "artist": result["Artist"],
+        "vibe": result["Vibe_Cluster_Label"]
+    }

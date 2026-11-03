@@ -20,6 +20,13 @@ function App() {
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [hasSearched, setHasSearched] = useState(false)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const [trackDetails, setTrackDetails] = useState(null)
+  const [detailsLoading, setDetailsLoading] = useState(false)
+  const [detailsError, setDetailsError] = useState('')
+
+  const PAGE_SIZE = 20
 
   useEffect(() => {
     api.get('/analytics')
@@ -59,36 +66,66 @@ function App() {
     }
   }
 
+  const searchTracks = async (page = 0) => {
+    if (!searchQuery.trim()) {
+      setSearchError('Please enter a track or artist name.')
+      return
+    }
 
-const searchTracks = async () => {
-  if (!searchQuery.trim()) {
-    setSearchError('Please enter a track or artist name.')
-    return
+    setSearchLoading(true)
+    setSearchError('')
+    setHasSearched(true)
+    setCurrentPage(page)
+    setSearchResults([])
+
+    try {
+      const response = await api.get('/tracks/search', {
+        params: {
+          q: searchQuery.trim(),
+          vibe: searchVibe || undefined,
+          limit: PAGE_SIZE + 1,
+          skip: page * PAGE_SIZE
+        }
+      })
+
+      const tracks = response.data
+
+      setHasMore(tracks.length > PAGE_SIZE)
+      setSearchResults(tracks.slice(0, PAGE_SIZE))
+
+    } catch (err) {
+      console.error('Search API Error:', err)
+      setSearchError('Unable to search tracks. Please try again.')
+    } finally {
+      setSearchLoading(false)
+    }
   }
 
-  setSearchLoading(true)
-  setSearchError('')
-  setHasSearched(true)
-  setSearchResults([])
+  const fetchTrackDetails = async (track) => {
+    setDetailsLoading(true)
+    setDetailsError('')
+    setTrackDetails(null)
 
-  try {
-    const response = await api.get('/tracks/search', {
-      params: {
-        q: searchQuery.trim(),
-        vibe: searchVibe || undefined,
-        limit: 50
+    try {
+      const response = await api.get('/tracks/details', {
+        params: {
+          track_name: track.Track_Name,
+          artist: track.Artist
+        }
+      })
+
+      if (response.data.message) {
+        setDetailsError('Track details not found.')
+      } else {
+        setTrackDetails(response.data)
       }
-    })
-
-    setSearchResults(response.data)
-  } catch (err) {
-    console.error('Search API Error:', err)
-    setSearchError('Unable to search tracks. Please try again.')
-  } finally {
-    setSearchLoading(false)
+    } catch (err) {
+      console.error('Track Details Error:', err)
+      setDetailsError('Unable to load track details.')
+    } finally {
+      setDetailsLoading(false)
+    }
   }
-}
-
 
   return (
     <div className="min-h-screen bg-[#0b0f0c] text-white">
@@ -140,140 +177,186 @@ const searchTracks = async () => {
         </div>
 
 
-{/* Track Search Section */}
-<section className="mt-28">
+        {/* Track Search Section */}
+        <section className="mt-28">
 
-  <div className="mb-8">
-    <p className="text-green-400 font-semibold tracking-widest mb-3">
-      MUSIC LIBRARY
-    </p>
+          <div className="mb-8">
+            <p className="text-green-400 font-semibold tracking-widest mb-3">
+              MUSIC LIBRARY
+            </p>
 
-    <h2 className="text-4xl font-bold">
-      Find Your Sound.
-    </h2>
+            <h2 className="text-4xl font-bold">
+              Find Your Sound.
+            </h2>
 
-    <p className="text-gray-400 mt-3">
-      Search tracks and artists from our music collection.
-    </p>
-  </div>
+            <p className="text-gray-400 mt-3">
+              Search tracks and artists from our music collection.
+            </p>
+          </div>
 
-  {/* Search Input */}
-  <div className="flex flex-col md:flex-row gap-4">
+          {/* Search Input */}
+          <div className="flex flex-col md:flex-row gap-4">
 
-    <input
-      type="text"
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') searchTracks()
-      }}
-      placeholder="Search songs or artists..."
-      className="flex-1 bg-[#141b16] border border-white/10 rounded-xl px-5 py-4 text-white outline-none focus:border-green-400"
-    />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') searchTracks(0)
+              }}
+              placeholder="Search songs or artists..."
+              className="flex-1 bg-[#141b16] border border-white/10 rounded-xl px-5 py-4 text-white outline-none focus:border-green-400"
+            />
 
-    <button
-      onClick={searchTracks}
-      disabled={searchLoading}
-      className="bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black font-bold px-8 py-4 rounded-xl transition"
-    >
-      {searchLoading ? 'Searching...' : 'Search'}
-    </button>
+            <button
+              onClick={() => searchTracks(0)}
+              disabled={searchLoading}
+              className="bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black font-bold px-8 py-4 rounded-xl transition"
+            >
+              {searchLoading ? 'Searching...' : 'Search'}
+            </button>
 
-  </div>
+          </div>
 
-  {/* Vibe Filter */}
-  <div className="flex flex-wrap gap-3 mt-5">
+          {/* Vibe Filter */}
+          <div className="flex flex-wrap gap-3 mt-5">
 
-    <button
-      onClick={() => setSearchVibe('')}
-      className={`px-4 py-2 rounded-full border text-sm transition ${
-        searchVibe === ''
-          ? 'bg-green-500 text-black border-green-500'
-          : 'border-white/10 text-gray-400 hover:border-green-400'
-      }`}
-    >
-      All Vibes
-    </button>
+            <button
+              onClick={() => {
+                setSearchVibe('')
+                if (searchQuery.trim()) {
+                  setSearchError('')
+                  setHasSearched(false)
+                }
+              }}
+              className={`px-4 py-2 rounded-full border text-sm transition ${
+                searchVibe === ''
+                  ? 'bg-green-500 text-black border-green-500'
+                  : 'border-white/10 text-gray-400 hover:border-green-400'
+              }`}
+            >
+              All Vibes
+            </button>
 
-    {analytics?.vibe_distribution.map((vibe) => (
-      <button
-        key={vibe.vibe}
-        onClick={() => setSearchVibe(vibe.vibe)}
-        className={`px-4 py-2 rounded-full border text-sm transition ${
-          searchVibe === vibe.vibe
-            ? 'bg-green-500 text-black border-green-500'
-            : 'border-white/10 text-gray-400 hover:border-green-400'
-        }`}
-      >
-        {vibe.vibe}
-      </button>
-    ))}
-
-  </div>
-
-  {/* Search Results */}
-  <div className="mt-10">
-
-    {searchError && (
-      <p className="text-red-400">{searchError}</p>
-    )}
-
-    {searchLoading && (
-      <p className="text-gray-400">Searching tracks...</p>
-    )}
-
-    {!searchLoading && hasSearched && !searchError && (
-      <div>
-
-        <h3 className="text-2xl font-bold mb-6">
-          Search Results ({searchResults.length})
-        </h3>
-
-        {searchResults.length === 0 ? (
-          <p className="text-gray-400">
-            No tracks found. Try another search.
-          </p>
-        ) : (
-          <div className="space-y-3">
-
-            {searchResults.map((track, index) => (
-              <div
-                key={`${track.Track_Name}-${track.Artist}-${index}`}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#141b16] border border-white/10 rounded-xl p-5 hover:border-green-400/40 transition"
+            {analytics?.vibe_distribution.map((vibe) => (
+              <button
+                key={vibe.vibe}
+                onClick={() => {
+                  setSearchVibe(vibe.vibe)
+                  if (searchQuery.trim()) {
+                    setSearchError('')
+                    setHasSearched(false)
+                  }
+                }}
+                className={`px-4 py-2 rounded-full border text-sm transition ${
+                  searchVibe === vibe.vibe
+                    ? 'bg-green-500 text-black border-green-500'
+                    : 'border-white/10 text-gray-400 hover:border-green-400'
+                }`}
               >
-
-                <div className="flex items-center gap-4">
-                  <span className="text-green-400 font-bold">
-                    {index + 1}
-                  </span>
-
-                  <div>
-                    <h4 className="font-semibold">
-                      {track.Track_Name}
-                    </h4>
-
-                    <p className="text-gray-400 text-sm mt-1">
-                      {track.Artist}
-                    </p>
-                  </div>
-                </div>
-
-                <span className="text-green-400 text-sm">
-                  {track.Vibe_Cluster_Label}
-                </span>
-
-              </div>
+                {vibe.vibe}
+              </button>
             ))}
 
           </div>
-        )}
 
-      </div>
-    )}
+          {/* Search Results */}
+          <div className="mt-10">
 
-  </div>
+            {searchError && (
+              <p className="text-red-400">{searchError}</p>
+            )}
 
-</section>
+            {searchLoading && (
+              <p className="text-gray-400">Searching tracks...</p>
+            )}
+
+            {!searchLoading && hasSearched && !searchError && (
+              <div>
+
+                <h3 className="text-2xl font-bold mb-6">
+                  Search Results
+                </h3>
+
+                {searchResults.length === 0 ? (
+                  <p className="text-gray-400">
+                    No tracks found. Try another search.
+                  </p>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+
+                      {searchResults.map((track, index) => (
+                        <div
+                          key={`${track.Track_Name}-${track.Artist}-${currentPage * PAGE_SIZE + index}`}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#141b16] border border-white/10 rounded-xl p-5 hover:border-green-400/40 transition"
+                        >
+
+                          <div className="flex items-center gap-4">
+                            <span className="text-green-400 font-bold">
+                              {currentPage * PAGE_SIZE + index + 1}
+                            </span>
+
+                            <div>
+                              <h4 className="font-semibold">
+                                {track.Track_Name}
+                              </h4>
+
+                              <p className="text-gray-400 text-sm mt-1">
+                                {track.Artist}
+                              </p>
+
+                              <button
+                                onClick={() => fetchTrackDetails(track)}
+                                className="mt-3 text-green-400 text-sm font-semibold hover:text-green-300"
+                              >
+                                View Details →
+                              </button>
+                            </div>
+                          </div>
+
+                          <span className="text-green-400 text-sm">
+                            {track.Vibe_Cluster_Label}
+                          </span>
+
+                        </div>
+                      ))}
+
+                    </div>
+
+                    {/* Pagination Buttons */}
+                    <div className="flex items-center justify-center gap-5 mt-10">
+
+                      <button
+                        onClick={() => searchTracks(currentPage - 1)}
+                        disabled={currentPage === 0 || searchLoading}
+                        className="px-6 py-3 rounded-xl border border-white/10 text-white hover:border-green-400 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                      >
+                        ← Previous
+                      </button>
+
+                      <span className="text-gray-400">
+                        Page {currentPage + 1}
+                      </span>
+
+                      <button
+                        onClick={() => searchTracks(currentPage + 1)}
+                        disabled={!hasMore || searchLoading}
+                        className="px-6 py-3 rounded-xl bg-green-500 text-black font-bold hover:bg-green-400 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                      >
+                        Next →
+                      </button>
+
+                    </div>
+                  </>
+                )}
+
+              </div>
+            )}
+
+          </div>
+
+        </section>
 
 
         {/* Explore Music Vibes */}
@@ -384,21 +467,30 @@ const searchTracks = async () => {
               {Array.isArray(playlist) && playlist.map((track, index) => (
                 <div
                   key={`${track.Track_Name}-${track.Artist}-${index}`}
-                  className="flex items-center gap-4 bg-[#141b16] border border-white/10 rounded-xl p-4"
+                  className="flex items-center justify-between gap-4 bg-[#141b16] border border-white/10 rounded-xl p-4"
                 >
-                  <span className="text-green-400 font-bold">
-                    {index + 1}
-                  </span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-green-400 font-bold">
+                      {index + 1}
+                    </span>
 
-                  <div>
-                    <h3 className="font-semibold">
-                      {track.Track_Name}
-                    </h3>
+                    <div>
+                      <h3 className="font-semibold">
+                        {track.Track_Name}
+                      </h3>
 
-                    <p className="text-gray-400 text-sm">
-                      {track.Artist}
-                    </p>
+                      <p className="text-gray-400 text-sm">
+                        {track.Artist}
+                      </p>
+                    </div>
                   </div>
+
+                  <button
+                    onClick={() => fetchTrackDetails(track)}
+                    className="text-green-400 text-sm font-semibold hover:text-green-300 mr-2"
+                  >
+                    View Details →
+                  </button>
                 </div>
               ))}
             </div>
@@ -444,6 +536,71 @@ const searchTracks = async () => {
 
       </main>
 
+      {/* Track Details Modal */}
+      {(trackDetails || detailsLoading || detailsError) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-5">
+
+          <div className="w-full max-w-lg bg-[#141b16] border border-white/10 rounded-2xl p-8 relative">
+
+            <button
+              onClick={() => {
+                setTrackDetails(null)
+                setDetailsError('')
+              }}
+              className="absolute top-5 right-5 text-gray-400 hover:text-white text-xl"
+            >
+              ✕
+            </button>
+
+            <p className="text-green-400 text-sm font-semibold tracking-widest">
+              TRACK INFORMATION
+            </p>
+
+            {detailsLoading && (
+              <p className="text-gray-400 mt-8">
+                Loading track details...
+              </p>
+            )}
+
+            {detailsError && (
+              <p className="text-red-400 mt-8">
+                {detailsError}
+              </p>
+            )}
+
+            {trackDetails && (
+              <div className="mt-6">
+
+                <AudioWaveform
+                  size={45}
+                  className="text-green-400 mb-6"
+                />
+
+                <h2 className="text-3xl font-bold">
+                  {trackDetails.track_name}
+                </h2>
+
+                <p className="text-gray-400 mt-3">
+                  {trackDetails.artist}
+                </p>
+
+                <div className="mt-8 bg-[#0b0f0c] rounded-xl p-5">
+                  <p className="text-gray-400 text-sm">
+                    Machine Learning Classification
+                  </p>
+
+                  <h3 className="text-green-400 font-bold text-xl mt-2">
+                    {trackDetails.vibe}
+                  </h3>
+                </div>
+
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <footer className="border-t border-white/10 px-8 py-6 text-center text-gray-500">
         <p>
@@ -476,3 +633,5 @@ function StatCard({ icon, number, label }) {
 }
 
 export default App
+
+
