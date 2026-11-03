@@ -14,6 +14,12 @@ function App() {
   const [selectedVibe, setSelectedVibe] = useState(null)
   const [playlist, setPlaylist] = useState([])
   const [loadingPlaylist, setLoadingPlaylist] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searchVibe, setSearchVibe] = useState('')
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchError, setSearchError] = useState('')
+  const [hasSearched, setHasSearched] = useState(false)
 
   useEffect(() => {
     api.get('/analytics')
@@ -52,6 +58,37 @@ function App() {
       setLoadingPlaylist(false)
     }
   }
+
+
+const searchTracks = async () => {
+  if (!searchQuery.trim()) {
+    setSearchError('Please enter a track or artist name.')
+    return
+  }
+
+  setSearchLoading(true)
+  setSearchError('')
+  setHasSearched(true)
+  setSearchResults([])
+
+  try {
+    const response = await api.get('/tracks/search', {
+      params: {
+        q: searchQuery.trim(),
+        vibe: searchVibe || undefined,
+        limit: 50
+      }
+    })
+
+    setSearchResults(response.data)
+  } catch (err) {
+    console.error('Search API Error:', err)
+    setSearchError('Unable to search tracks. Please try again.')
+  } finally {
+    setSearchLoading(false)
+  }
+}
+
 
   return (
     <div className="min-h-screen bg-[#0b0f0c] text-white">
@@ -101,6 +138,143 @@ function App() {
           </button>
 
         </div>
+
+
+{/* Track Search Section */}
+<section className="mt-28">
+
+  <div className="mb-8">
+    <p className="text-green-400 font-semibold tracking-widest mb-3">
+      MUSIC LIBRARY
+    </p>
+
+    <h2 className="text-4xl font-bold">
+      Find Your Sound.
+    </h2>
+
+    <p className="text-gray-400 mt-3">
+      Search tracks and artists from our music collection.
+    </p>
+  </div>
+
+  {/* Search Input */}
+  <div className="flex flex-col md:flex-row gap-4">
+
+    <input
+      type="text"
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') searchTracks()
+      }}
+      placeholder="Search songs or artists..."
+      className="flex-1 bg-[#141b16] border border-white/10 rounded-xl px-5 py-4 text-white outline-none focus:border-green-400"
+    />
+
+    <button
+      onClick={searchTracks}
+      disabled={searchLoading}
+      className="bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black font-bold px-8 py-4 rounded-xl transition"
+    >
+      {searchLoading ? 'Searching...' : 'Search'}
+    </button>
+
+  </div>
+
+  {/* Vibe Filter */}
+  <div className="flex flex-wrap gap-3 mt-5">
+
+    <button
+      onClick={() => setSearchVibe('')}
+      className={`px-4 py-2 rounded-full border text-sm transition ${
+        searchVibe === ''
+          ? 'bg-green-500 text-black border-green-500'
+          : 'border-white/10 text-gray-400 hover:border-green-400'
+      }`}
+    >
+      All Vibes
+    </button>
+
+    {analytics?.vibe_distribution.map((vibe) => (
+      <button
+        key={vibe.vibe}
+        onClick={() => setSearchVibe(vibe.vibe)}
+        className={`px-4 py-2 rounded-full border text-sm transition ${
+          searchVibe === vibe.vibe
+            ? 'bg-green-500 text-black border-green-500'
+            : 'border-white/10 text-gray-400 hover:border-green-400'
+        }`}
+      >
+        {vibe.vibe}
+      </button>
+    ))}
+
+  </div>
+
+  {/* Search Results */}
+  <div className="mt-10">
+
+    {searchError && (
+      <p className="text-red-400">{searchError}</p>
+    )}
+
+    {searchLoading && (
+      <p className="text-gray-400">Searching tracks...</p>
+    )}
+
+    {!searchLoading && hasSearched && !searchError && (
+      <div>
+
+        <h3 className="text-2xl font-bold mb-6">
+          Search Results ({searchResults.length})
+        </h3>
+
+        {searchResults.length === 0 ? (
+          <p className="text-gray-400">
+            No tracks found. Try another search.
+          </p>
+        ) : (
+          <div className="space-y-3">
+
+            {searchResults.map((track, index) => (
+              <div
+                key={`${track.Track_Name}-${track.Artist}-${index}`}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#141b16] border border-white/10 rounded-xl p-5 hover:border-green-400/40 transition"
+              >
+
+                <div className="flex items-center gap-4">
+                  <span className="text-green-400 font-bold">
+                    {index + 1}
+                  </span>
+
+                  <div>
+                    <h4 className="font-semibold">
+                      {track.Track_Name}
+                    </h4>
+
+                    <p className="text-gray-400 text-sm mt-1">
+                      {track.Artist}
+                    </p>
+                  </div>
+                </div>
+
+                <span className="text-green-400 text-sm">
+                  {track.Vibe_Cluster_Label}
+                </span>
+
+              </div>
+            ))}
+
+          </div>
+        )}
+
+      </div>
+    )}
+
+  </div>
+
+</section>
+
 
         {/* Explore Music Vibes */}
         <section className="mt-32">

@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from pydantic import BaseModel, Field
 import joblib
 import numpy as np
@@ -140,3 +141,33 @@ def get_analytics():
         "vibe_distribution": analytics
     }
 
+
+
+@app.get("/tracks/search")
+def search_tracks(
+    q: str = Query(..., min_length=1),
+    vibe: str | None = None,
+    limit: int = Query(20, ge=1, le=100)
+):
+    search_results = playlist_df[
+        playlist_df["Track_Name"].str.contains(
+            q, case=False, na=False, regex=False
+        )
+        |
+        playlist_df["Artist"].str.contains(
+            q, case=False, na=False, regex=False
+        )
+    ]
+
+    if vibe:
+        search_results = search_results[
+            search_results["Vibe_Cluster_Label"] == vibe
+        ]
+
+    search_results = search_results.drop_duplicates(
+    subset=["Track_Name", "Artist"]
+)
+
+    return search_results[
+    ["Track_Name", "Artist", "Vibe_Cluster_Label"]
+    ].head(limit).to_dict(orient="records")
