@@ -358,6 +358,119 @@ function App() {
 
         </section>
 
+        {/* Predict Your Vibe */}
+<section className="mt-32">
+  <div className="mb-10">
+    <p className="text-green-400 font-semibold tracking-widest mb-3">
+      AI MUSIC CLASSIFIER
+    </p>
+
+    <h2 className="text-4xl font-bold">
+      Predict Your Vibe.
+    </h2>
+
+    <p className="text-gray-400 mt-3">
+      Enter audio features and let our machine learning model
+      discover the music vibe.
+    </p>
+  </div>
+
+  <div className="bg-[#141b16] border border-white/10 rounded-2xl p-8 max-w-3xl">
+
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <div>
+        <label className="block text-gray-300 mb-2">
+          Danceability (0–1)
+        </label>
+        <input
+          id="danceability"
+          type="number"
+          min="0"
+          max="1"
+          step="0.01"
+          placeholder="e.g. 0.58"
+          className="w-full bg-[#0b0f0c] border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-green-400"
+        />
+      </div>
+
+      <div>
+        <label className="block text-gray-300 mb-2">
+          Energy (0–1)
+        </label>
+        <input
+          id="energy"
+          type="number"
+          min="0"
+          max="1"
+          step="0.01"
+          placeholder="e.g. 0.78"
+          className="w-full bg-[#0b0f0c] border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-green-400"
+        />
+      </div>
+
+      <div>
+        <label className="block text-gray-300 mb-2">
+          Acousticness (0–1)
+        </label>
+        <input
+          id="acousticness"
+          type="number"
+          min="0"
+          max="1"
+          step="0.01"
+          placeholder="e.g. 0.02"
+          className="w-full bg-[#0b0f0c] border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-green-400"
+        />
+      </div>
+
+      <div>
+        <label className="block text-gray-300 mb-2">
+          Tempo (BPM)
+        </label>
+        <input
+          id="tempo"
+          type="number"
+          min="0.01"
+          step="0.1"
+          placeholder="e.g. 123"
+          className="w-full bg-[#0b0f0c] border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-green-400"
+        />
+      </div>
+
+    </div>
+
+    <button
+      onClick={async () => {
+        const danceability = Number(document.getElementById('danceability').value)
+        const energy = Number(document.getElementById('energy').value)
+        const acousticness = Number(document.getElementById('acousticness').value)
+        const tempo = Number(document.getElementById('tempo').value)
+
+        try {
+          const response = await api.post('/predict', {
+            danceability,
+            energy,
+            acousticness,
+            tempo
+          })
+
+          alert(`Predicted Vibe: ${response.data.vibe}`)
+        } catch (err) {
+          console.error('Prediction Error:', err)
+          alert('Prediction failed. Please check your inputs.')
+        }
+      }}
+      className="mt-8 w-full bg-green-500 hover:bg-green-400 text-black font-bold py-4 rounded-xl transition"
+    >
+      Predict My Vibe →
+    </button>
+
+  </div>
+</section>
+
+      
+
 
         {/* Explore Music Vibes */}
         <section className="mt-32">
