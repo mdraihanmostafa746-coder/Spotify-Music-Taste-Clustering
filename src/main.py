@@ -77,6 +77,28 @@ def predict_vibe(track: TrackFeatures):
 PLAYLIST_PATH = BASE_DIR / "engineered_playlists.csv"
 playlist_df = pd.read_csv(PLAYLIST_PATH)
 
+# Load original Spotify dataset for audio features
+DATASET_PATH = BASE_DIR / "dataset" / "spotify-tracks-dataset-detailed.csv"
+
+audio_df = pd.read_csv(DATASET_PATH)
+
+# Keep only required audio feature columns
+audio_df = audio_df[
+    [
+        "track_name",
+        "artists",
+        "danceability",
+        "energy",
+        "acousticness",
+        "tempo"
+    ]
+].copy()
+
+# Remove rows without track name or artist
+audio_df = audio_df.dropna(
+    subset=["track_name", "artists"]
+)
+
 
 @app.get("/playlists/{vibe}")
 def get_playlist(vibe: str, limit: int = 10):
@@ -179,18 +201,36 @@ def get_track_details(
     track_name: str = Query(..., min_length=1),
     artist: str = Query(..., min_length=1)
 ):
+    # Find track in playlist data
     track = playlist_df[
         (playlist_df["Track_Name"].str.casefold() == track_name.casefold()) &
         (playlist_df["Artist"].str.casefold() == artist.casefold())
     ]
-
     if track.empty:
-        return {"message": "Track not found"}
-
+        raise HTTPException(
+            status_code=404,
+            detail="Track not found"
+        )
     result = track.iloc[0]
+
+    # Find audio features in original dataset
+    audio_track = audio_df[
+        (audio_df["track_name"].str.casefold() == track_name.casefold()) &
+        (audio_df["artists"].str.casefold() == artist.casefold())
+    ]
+    if audio_track.empty:
+        raise HTTPException(
+            status_code=404,
+            detail="Audio features not found"
+        )
+    audio = audio_track.iloc[0]
 
     return {
         "track_name": result["Track_Name"],
         "artist": result["Artist"],
-        "vibe": result["Vibe_Cluster_Label"]
+        "vibe": result["Vibe_Cluster_Label"],
+        "danceability": float(audio["danceability"]),
+        "energy": float(audio["energy"]),
+        "acousticness": float(audio["acousticness"]),
+        "tempo": float(audio["tempo"])
     }

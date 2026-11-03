@@ -538,9 +538,9 @@ function App() {
 
       {/* Track Details Modal */}
       {(trackDetails || detailsLoading || detailsError) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-5 overflow-y-auto">
 
-          <div className="w-full max-w-lg bg-[#141b16] border border-white/10 rounded-2xl p-8 relative">
+          <div className="w-full max-w-lg bg-[#141b16] border border-white/10 rounded-2xl p-8 relative my-8">
 
             <button
               onClick={() => {
@@ -570,11 +570,7 @@ function App() {
 
             {trackDetails && (
               <div className="mt-6">
-
-                <AudioWaveform
-                  size={45}
-                  className="text-green-400 mb-6"
-                />
+                <AudioWaveform size={45} className="text-green-400 mb-6" />
 
                 <h2 className="text-3xl font-bold">
                   {trackDetails.track_name}
@@ -584,6 +580,7 @@ function App() {
                   {trackDetails.artist}
                 </p>
 
+                {/* Vibe Classification */}
                 <div className="mt-8 bg-[#0b0f0c] rounded-xl p-5">
                   <p className="text-gray-400 text-sm">
                     Machine Learning Classification
@@ -594,6 +591,59 @@ function App() {
                   </h3>
                 </div>
 
+                {/* Audio Features */}
+                <div className="mt-6">
+                  <h3 className="text-white font-semibold text-lg mb-5">
+                    Audio Characteristics
+                  </h3>
+
+                  {[
+                    {
+                      name: 'Danceability',
+                      value: trackDetails.danceability
+                    },
+                    {
+                      name: 'Energy',
+                      value: trackDetails.energy
+                    },
+                    {
+                      name: 'Acousticness',
+                      value: trackDetails.acousticness
+                    }
+                  ].map((feature) => (
+                    <div key={feature.name} className="mb-5">
+                      <div className="flex justify-between mb-2">
+                        <span className="text-gray-300 text-sm">
+                          {feature.name}
+                        </span>
+
+                        <span className="text-green-400 text-sm">
+                          {(feature.value * 100).toFixed(1)}%
+                        </span>
+                      </div>
+
+                      <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-green-400 rounded-full"
+                          style={{
+                            width: `${feature.value * 100}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Tempo */}
+                  <div className="mt-6 bg-[#0b0f0c] rounded-xl p-5">
+                    <p className="text-gray-400 text-sm">
+                      Tempo
+                    </p>
+
+                    <p className="text-white text-2xl font-bold mt-2">
+                      {trackDetails.tempo.toFixed(1)} BPM
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -633,5 +683,4 @@ function StatCard({ icon, number, label }) {
 }
 
 export default App
-
 
